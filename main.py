@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from typing import List
 from starlette.exceptions import HTTPException as StarletteHttpException
+from schemas import PostCreate, PostResponse
 
 app = FastAPI()
 
@@ -18,13 +19,15 @@ posts: List[dict] = [
         "id": 1,
         "author": "Zeeshan Latif",
         "title": "FastAPI",
-        "content": "FastAPI is a modern, fast (high-performance), web framework for building APIs with Python 3.7+ based on standard Python type hints."
+        "content": "FastAPI is a modern, fast (high-performance), web framework for building APIs with Python 3.7+ based on standard Python type hints.",
+        "date_posted": "April 20, 2025",
     },
     {
         "id": 2,
         "author": "Jane Smith",
         "title": "FastAPI 2",
-        "content": "FastAPI 2 is a modern, fast (high-performance), web framework for building APIs with Python 3.7+ based on standard Python type hints."
+        "content": "FastAPI 2 is a modern, fast (high-performance), web framework for building APIs with Python 3.7+ based on standard Python type hints.",
+        "date_posted": "April 30, 2025",
     }
 ]
 
@@ -43,16 +46,31 @@ def post_page(request: Request, post_id: int):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 
 
-@app.get("/api/posts")
+@app.get("/api/posts", response_model=List[PostResponse])
 def get_posts():
     return posts
 
-@app.get("/api/posts/{post_id}")
+@app.get("/api/posts/{post_id}", response_model=PostResponse)
 def get_post(post_id: int):
     for post in posts:
         if post.get("id") == post_id:
             return post
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+
+@app.post("/api/posts", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
+def create_post(post: PostCreate):
+    new_id = max(p["id"] for p in posts) + 1 if posts else 1
+    new_post = {
+        "id": new_id,
+        "author": post.author,
+        "title" : post.title,
+        "content": post.content,
+        "date_posted": "Feb 16, 2026"
+    }
+
+    posts.append(new_post)
+    return new_post
+
 
 @app.exception_handler(StarletteHttpException)
 def general_http_exception_handler(request: Request, exception: StarletteHttpException):
