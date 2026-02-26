@@ -14,7 +14,9 @@ router = APIRouter()
 @router.get("", response_model=list[PostResponse])
 async def get_posts(db: Annotated[AsyncSession, Depends(get_db)]):
     result = await db.execute(
-        select(models.Post).options(selectinload(models.Post.author)),
+        select(models.Post)
+        .options(selectinload(models.Post.author))
+        .order_by(models.Post.date_posted.desc())
     )
     posts = result.scalars().all()
     return posts
@@ -27,7 +29,7 @@ async def get_posts(db: Annotated[AsyncSession, Depends(get_db)]):
 )
 async def create_post(post: PostCreate, db: Annotated[AsyncSession, Depends(get_db)]):
     result = await db.execute(
-        select(models.User).where(models.User.id == post.user_id),
+        select(models.User).where(models.User.id == post.user_id)
     )
     user = result.scalars().first()
     if not user:
