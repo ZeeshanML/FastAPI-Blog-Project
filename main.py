@@ -63,7 +63,7 @@ async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database is not available",
         ) from e
-    return {"status": "healthy"}
+    return {"status": "healthy!"}
 
 
 @app.get("/", include_in_schema=False, name="home")
