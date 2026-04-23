@@ -1,0 +1,63 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGION: us-east4
+  REPO: fastapi-repo
+  IMAGE: fastapi-app
+  SERVICE: fastapi-blog
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/508989180395/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+          service_account: github-actions@fastapi-blog-494112.iam.gserviceaccount.com
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_URL=${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ github.sha }}
+          docker build -t $IMAGE_URL .
+          docker push $IMAGE_URL
+
+      - name: Deploy to Cloud Run
+        run: |
+          IMAGE_URL=${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ github.sha }}
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image $IMAGE_URL \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars="SECRET_KEY=${{ secrets.SECRET_KEY }}" \
+            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --set-env-vars="S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}" \
+            --set-env-vars="S3_REGION=${{ secrets.S3_REGION }}" \
+            --set-env-vars="S3_ACCESS_KEY_ID=${{ secrets.S3_ACCESS_KEY_ID }}" \
+            --set-env-vars="S3_SECRET_ACCESS_KEY=${{ secrets.S3_SECRET_ACCESS_KEY }}" \
+            --set-env-vars="MAIL_SERVER=${{ secrets.MAIL_SERVER }}" \
+            --set-env-vars="MAIL_PORT=${{ secrets.MAIL_PORT }}" \
+            --set-env-vars="MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}" \
+            --set-env-vars="MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}" \
+            --set-env-vars="MAIL_FROM=${{ secrets.MAIL_FROM }}" \
+            --set-env-vars="MAIL_USE_TLS=${{ secrets.MAIL_USE_TLS }}" \
+            --set-env-vars="FRONTEND_URL=${{ secrets.FRONTEND_URL }}"
